@@ -3,6 +3,7 @@
     {
       "target_name": "node-simc",
       "sources": [
+	  	"src/simulation.cc",
         "src/binding.cc"
       ],
       "dependencies": [

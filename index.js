@@ -8,3 +8,9 @@
 var binding = require('bindings')('node-simc');
 
 module.exports = binding;
+
+var sim = new binding.Simulation();
+
+console.log(sim);
+
+sim.run();

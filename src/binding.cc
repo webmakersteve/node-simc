@@ -8,6 +8,9 @@
 #include "binding.hpp"
 
 void Init(v8::Local<v8::Object> exports, v8::Local<v8::Object> module) {
+
+	NodeSimc::Simulation::Init(exports);
+
   exports->Set(Nan::New("version").ToLocalChecked(),
       Nan::New(SC_VERSION).ToLocalChecked());
 }

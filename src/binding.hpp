@@ -10,5 +10,6 @@
 
 #include <nan.h>
 #include "simulationcraft.hpp"
+#include "simulation.hpp"
 
 #endif  // SRC_BINDING_H_
