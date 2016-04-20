@@ -5,6 +5,10 @@
  * All rights reserved.
  */
 
-var binding = require('bindings')('node-simc');
+#ifndef SRC_BINDING_H_
+#define SRC_BINDING_H_
 
-module.exports = binding;
+#include <nan.h>
+#include "simulationcraft.hpp"
+
+#endif  // SRC_BINDING_H_
