@@ -1,0 +1,3 @@
+[submodule "deps/simc"]
+	path = deps/simc
+	url = https://github.com/simulationcraft/simc.git
