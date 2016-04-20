@@ -2,6 +2,7 @@
   "name": "node-simc",
   "version": "0.0.1",
   "description": "Simulationcraft bindings for node.js",
+	"repository": "https://github.com/webmakersteve/node-simc.git",
   "main": "index.js",
   "scripts": {
     "test": "mocha test",
