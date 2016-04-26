@@ -3,6 +3,7 @@
     {
       "target_name": "node-simc",
       "sources": [
+        "src/workers.cc",
 	  	"src/simulation.cc",
         "src/binding.cc"
       ],

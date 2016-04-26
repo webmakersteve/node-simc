@@ -5,13 +5,36 @@
  * All rights reserved.
  */
 
-#include <iostream>
 #include "simulation.hpp"
+#include "workers.hpp"
 
 using Nan::FunctionCallbackInfo;
-
+using NodeSimc::Workers::RunSimulation;
 
 namespace NodeSimc {
+
+SimulationResponse::SimulationResponse() {
+	canceled = 1;
+	player_dps = 0;
+}
+
+SimulationResponse::~SimulationResponse() {
+
+}
+
+void SimulationResponse::Load(sim_t * sim) {
+	canceled = sim->canceled;
+
+	if (canceled < 1) {
+		player_dps = sim->active_player->collected_data.dps.mean();
+	}
+}
+
+v8::Local<v8::Object> SimulationResponse::AsObject() {
+	v8::Local<v8::Object> object = Nan::New<v8::Object>();
+
+	return object;
+}
 
 Simulation::Simulation() :
 	sim() {
@@ -19,6 +42,7 @@ Simulation::Simulation() :
 }
 Simulation::~Simulation() {
 	dbc::de_init();
+	delete _old_stream_buffer;
 }
 
 Nan::Persistent<v8::Function> Simulation::constructor;
@@ -69,12 +93,21 @@ bool Simulation::need_to_save_profiles() {
   return false;
 }
 
-int Simulation::Run(const std::vector<std::string>& args) {
+void Simulation::StartBuffering() {
+	_old_stream_buffer = std::cout.rdbuf(_buffer.rdbuf());
+}
+
+std::string Simulation::StopBuffering() {
+	return _buffer.str();
+}
+
+SimulationResponse * Simulation::Run(const std::vector<std::string>& args) {
 	module_t::init();
 	unique_gear::register_hotfixes();
 	unique_gear::register_special_effects();
 
 	sim_control_t control;
+	SimulationResponse * response = new SimulationResponse();
 
 	try
 	{
@@ -82,7 +115,7 @@ int Simulation::Run(const std::vector<std::string>& args) {
 	}
 	catch (const std::exception& e) {
 		std::cerr << "ERROR! Incorrect option format: " << e.what() << std::endl;
-		return 1;
+		return response;
 	}
 
 	// Hotfixes are applies right before the sim context (control) is created, and simulator setup
@@ -103,22 +136,22 @@ int Simulation::Run(const std::vector<std::string>& args) {
 	if ( sim.display_hotfixes )
 	{
 		std::cout << hotfix::to_str( sim.dbc.ptr );
-		return 0;
+		return response;
 	}
 
 	if ( sim.display_bonus_ids )
 	{
 		std::cout << dbc::bonus_ids_str( sim.dbc );
-		return 0;
+		return response;
 	}
 
 	if ( ! setup_success )
 	{
 		std::cerr <<  "ERROR! Setup failure: " << errmsg << std::endl;
-		return 1;
+		return response;
 	}
 
-	if ( sim.canceled ) return 1;
+	if ( sim.canceled ) return response;
 
 	std::cout << std::endl;
 
@@ -131,7 +164,7 @@ int Simulation::Run(const std::vector<std::string>& args) {
 		}
 		catch( const std::exception& e ){
 			std::cerr <<  "ERROR! Spell Query failure: " << e.what() << std::endl;
-			return 1;
+			return response;
 		}
 	}
 	else if ( need_to_save_profiles() )
@@ -155,9 +188,31 @@ int Simulation::Run(const std::vector<std::string>& args) {
 			sim.canceled = 1;
 	}
 
-	std::cout << std::endl;
+	response->Load(&sim);
 
-	return sim.canceled;
+	return response;
+}
+
+std::vector<std::string> Simulation::GetArgs(v8::Local<v8::Array> parameter) {
+	std::vector<std::string> newItem;
+
+	if (parameter->Length() >= 1) {
+
+    for (unsigned int i = 0; i < parameter->Length(); i++) {
+      Nan::MaybeLocal<v8::String> p =
+        Nan::To<v8::String>(parameter->Get(i));
+      if (p.IsEmpty()) {
+        continue;
+      }
+
+      Nan::Utf8String pVal(p.ToLocalChecked());
+      std::string pString(*pVal);
+
+      newItem.push_back(pString);
+    }
+	}
+
+	return newItem;
 }
 
 void Simulation::NodeRun(const Nan::FunctionCallbackInfo<v8::Value>& info) {
@@ -165,11 +220,25 @@ void Simulation::NodeRun(const Nan::FunctionCallbackInfo<v8::Value>& info) {
 
 	Simulation* sim = ObjectWrap::Unwrap<Simulation>(info.This());
 
-	std::vector<std::string> args;
+	if (!info[0]->IsArray()) {
+		Nan::ThrowError("Must provide a configuration array");
+		return;
+	}
 
-	sim->Run(args);
+	std::vector<std::string> args = GetArgs(info[0].As<v8::Array>());
 
-	info.GetReturnValue().Set(Nan::Null());
+	if (info[1]->IsFunction()) {
+		Nan::Callback * callback = new Nan::Callback(info[1].As<v8::Function>());
+
+		Nan::AsyncQueueWorker(
+			new RunSimulation(callback, sim, args));
+		info.GetReturnValue().Set(Nan::Null());
+	} else {
+		SimulationResponse * response = sim->Run(args);
+		info.GetReturnValue().Set(response->AsObject());
+		delete response;
+	}
+
 }
 
 }

@@ -13,11 +13,24 @@
 
 namespace NodeSimc {
 
+class SimulationResponse {
+	public:
+		SimulationResponse();
+		~SimulationResponse();
+
+		void Load(sim_t*);
+		v8::Local<v8::Object> AsObject();
+
+		int canceled;
+	protected:
+		double player_dps;
+};
+
 class Simulation : public Nan::ObjectWrap {
 	public:
 		static void Init(v8::Local<v8::Object>);
 
-		int Run(const std::vector<std::string>&);
+		SimulationResponse * Run(const std::vector<std::string>&);
 
 	protected:
 		Simulation();
@@ -33,6 +46,13 @@ class Simulation : public Nan::ObjectWrap {
 		sim_t sim;
 
 		bool need_to_save_profiles();
+		static std::vector<std::string> GetArgs(v8::Local<v8::Array>);
+
+		void StartBuffering();
+		std::string StopBuffering();
+
+		std::stringstream _buffer;
+		std::streambuf * _old_stream_buffer;
 
 };
 

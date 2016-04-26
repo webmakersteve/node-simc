@@ -11,6 +11,11 @@ module.exports = binding;
 
 var sim = new binding.Simulation();
 
-console.log(sim);
+var r = sim.run([
+	'armory=us,illidan,john',
+	'calculate_scale_factors=1'
+], function(err, response) {
+	console.log('done');
+});
 
-sim.run();
+console.log(r);
